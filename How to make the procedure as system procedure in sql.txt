@@ -1,0 +1,9 @@
+After the stored procedure has been created it needs to be marked as a system stored procedure.
+
+USE master
+GO
+
+EXEC sys.sp_MS_marksystemobject sp_FindStringInTable
+GO
+
+One thing to keep in mind is that if you are using the % in front of the value such as '%land' this will force SQL Server to scan the table and not use the indexes. Also, since you are searching through all columns using an OR clause it is a pretty good bet that you will do a table scan, so be aware of this on large tables.

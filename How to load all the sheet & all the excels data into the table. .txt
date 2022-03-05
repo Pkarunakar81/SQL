@@ -1,0 +1,115 @@
+Below is the script task code to load all the sheet & all the excels data present in a folder to a table: -
+        public void Main()
+{
+            // TODO: Add your code here
+
+            // cm = Dts.Connections["DBConn"];
+
+            string FolderPath = Dts.Variables["User::FolderPath"].Value.ToString();
+            string TableName = Dts.Variables["User::TableName"].Value.ToString();
+            string SchemaName = Dts.Variables["User::SchemaName"].Value.ToString();
+            string DBConn = Dts.Variables["User::Database"].Value.ToString();
+
+            // MessageBox.Show(TableName);
+            // MessageBox.Show(SchemaName);
+            // MessageBox.Show(DBConn1);
+
+            var directory = new DirectoryInfo(FolderPath);
+              FileInfo[] files = directory.GetFiles();
+
+            //Declare and initilize variables
+            string fileFullPath = "";
+            SqlConnection myADONETConnection = new SqlConnection();
+            myADONETConnection = (System.Data.SqlClient.SqlConnection)Dts.Connections[DBConn].AcquireConnection(null);
+           
+            //Get one Book(Excel file at a time)
+            foreach (FileInfo file in files)
+            {
+                fileFullPath = FolderPath + "\\" + file.Name;
+
+                string filename = "";
+                filename = file.Name;
+
+                //Create Excel Connection
+                string ConStr;
+                string HDR;
+                HDR = "YES";
+               
+                ConStr = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + fileFullPath + ";Extended Properties=\"Excel 12.0;HDR=" + HDR + ";IMEX=0\"";
+                OleDbConnection cnn = new OleDbConnection(ConStr);
+
+                //Get Sheet Name
+                cnn.Open();
+                DataTable dtSheet = cnn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+                string sheetname;
+                sheetname = "";
+                //Only read data from provided SheetNumber
+               
+                foreach (DataRow drSheet in dtSheet.Rows)
+                {
+
+                    if (drSheet["TABLE_NAME"].ToString().Contains("$"))
+                    {
+                        sheetname = drSheet["TABLE_NAME"].ToString();
+                        // MessageBox.Show(sheetname);
+
+                        //Load the DataTable with Sheet Data so we can get the column header
+                        OleDbCommand oconn = new OleDbCommand("select top 1 * from [" + sheetname + "]", cnn);
+                        OleDbDataAdapter adp = new OleDbDataAdapter(oconn);
+                        DataTable dt = new DataTable();
+                        adp.Fill(dt);
+                        cnn.Close();
+
+                        //Prepare Header columns list so we can run against Database to get matching columns for a table.
+                        string ExcelHeaderColumn = "";
+                        string SQLQueryToGetMatchingColumn = "";
+                        for (int i = 0; i < dt.Columns.Count; i++)
+                        {
+                            if (i != dt.Columns.Count - 1)
+                                ExcelHeaderColumn += "'" + dt.Columns[i].ColumnName + "'" + ",";
+                            else
+                                ExcelHeaderColumn += "'" + dt.Columns[i].ColumnName + "'";
+                        }
+
+                        SQLQueryToGetMatchingColumn = "select STUFF((Select  ',['+Column_Name+']' from Information_schema.Columns where Table_Name='" +
+                            TableName + "' and Table_SChema='" + SchemaName + "'" +
+                            "and Column_Name in (" + @ExcelHeaderColumn + ") for xml path('')),1,1,'') AS ColumnList";
+
+                        // MessageBox.Show(SQLQueryToGetMatchingColumn);
+                        // MessageBox.Show(ExcelHeaderColumn);
+
+
+                        //Get Matching Column List from SQL Server
+                        string SQLColumnList = "";
+                        SqlCommand cmd = myADONETConnection.CreateCommand();
+                        cmd.CommandText = SQLQueryToGetMatchingColumn;
+                        SQLColumnList = (string)cmd.ExecuteScalar();
+
+                        // MessageBox.Show(" Matching Columns: " + SQLColumnList);
+
+
+                        //Use Actual Matching Columns to get data from Excel Sheet
+                        OleDbConnection cnn1 = new OleDbConnection(ConStr);
+                        cnn1.Open();
+                        OleDbCommand oconn1 = new OleDbCommand("select " + SQLColumnList + "from [" + sheetname + "]", cnn1);
+                        OleDbDataAdapter adp1 = new OleDbDataAdapter(oconn1);
+                        DataTable dt1 = new DataTable();
+                        adp1.Fill(dt1);
+                        cnn1.Close();
+
+
+                        //Load Data from DataTable to SQL Server Table.
+                        using (SqlBulkCopy BC = new SqlBulkCopy(myADONETConnection))
+                        {
+                            BC.DestinationTableName = SchemaName + "." + TableName;
+                            foreach (var column in dt1.Columns)
+                                BC.ColumnMappings.Add(column.ToString(), column.ToString());
+                            BC.WriteToServer(dt1);
+                        }
+                       
+                    }
+                }
+
+        }
+
+

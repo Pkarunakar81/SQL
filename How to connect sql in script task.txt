@@ -1,0 +1,56 @@
+Below is the script task code to connect to oledb source and insert sample data into a table:-
+        public void Main()
+{
+           // Int32 ctr = 0;
+           // string FilePath = Dts.Variables["User::Filepath"].Value.ToString();
+           // string TableName = Dts.Variables["User::TableName"].Value.ToString();
+           // string[] fileEntries = Directory.GetFiles(FilePath, "*");
+          //  string Line = string.Empty;
+           // string query = string.Empty;
+
+            // TODO: Add your code here
+            string oleDBConnString = string.Empty;
+            Microsoft.SqlServer.Dts.Runtime.Wrapper.IDTSConnectionManagerDatabaseParameters100 connMrgParameters = default(Microsoft.SqlServer.Dts.Runtime.Wrapper.IDTSConnectionManagerDatabaseParameters100);
+            //System.Data.OleDb.OleDbConnection oledbConn = null;
+            ConnectionManager connMgr = Dts.Connections["OLEDB_Conn_mgr"];
+            connMrgParameters = (Microsoft.SqlServer.Dts.Runtime.Wrapper.IDTSConnectionManagerDatabaseParameters100)connMgr.InnerObject;
+            System.Data.OleDb.OleDbConnection oledbConn = connMrgParameters.GetConnectionForSchema() as OleDbConnection;
+            oleDBConnString = oledbConn.ConnectionString;
+            MessageBox.Show(oleDBConnString.ToString());
+/*
+            foreach (string fileName in fileEntries)
+            {
+                System.IO.StreamReader SourceFile = new System.IO.StreamReader(fileName);
+                ctr = 0;
+                while ((Line = SourceFile.ReadLine()) != null)
+                {
+                    if (ctr != 0)
+                    {
+                        Line = Line.Trim();
+                        //query = "Insert into dbo." + TableName + " values('" + Line.Replace(",", "','").Replace("   ", "','") + "')";
+                        OleDbCommand cmd = new OleDbCommand();
+                        cmd.CommandType = CommandType.Text;
+                        cmd.CommandText = "Insert into dbo." + TableName + " values('" + Line.Replace(",", "','").Replace("   ", "','") + "')";
+                        cmd.Connection = oledbConn;
+                        cmd.ExecuteNonQuery();
+
+                        // SqlCommand SQLCommand = new SqlCommand(query, conn);
+                        // SQLCommand.ExecuteNonQuery();
+                        ////MessageBox.Show(query);
+                    }
+                    ctr++;
+                }
+            }*/
+            /*
+            OleDbCommand cmd = new OleDbCommand();
+            cmd.CommandType = CommandType.Text;
+            cmd.CommandText = "insert into test_kar values ('" + "Test" + "','" + "200" + "')";
+            //oledbConn.Open();
+            cmd.Connection = oledbConn;
+             cmd.ExecuteNonQuery();
+             System.Windows.Forms.MessageBox.Show("An Item has been successfully added", "Caption", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+            // oledbConn.Close();
+            */
+            Dts.TaskResult = (int)ScriptResults.Success;
+        }
+
